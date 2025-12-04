@@ -340,3 +340,290 @@
     flex-direction: column;
   }
 }
+
+/* Add these styles to your existing Practice.css */
+
+/* Coding Question Specific Styles */
+.coding-question-view {
+  width: 100%;
+}
+
+.coding-description {
+  background: #f8f9fa;
+  border-left: 4px solid #667eea;
+  padding: 20px;
+  margin: 20px 0;
+  border-radius: 8px;
+}
+
+.coding-description pre {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #333;
+}
+
+.toggle-solution-btn {
+  width: 100%;
+  padding: 15px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  margin: 20px 0;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.toggle-solution-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+}
+
+.coding-solution {
+  margin-top: 20px;
+  padding: 25px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  border: 2px solid #667eea;
+}
+
+.coding-solution h3 {
+  color: #667eea;
+  margin-bottom: 15px;
+  font-size: 1.3rem;
+}
+
+.code-block {
+  background: #2d2d2d;
+  border-radius: 8px;
+  padding: 20px;
+  overflow-x: auto;
+  margin: 15px 0;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.code-block pre {
+  color: #f8f8f2;
+  font-family: 'Fira Code', 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.solution-explanation {
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  margin-top: 15px;
+  border-left: 4px solid #4caf50;
+}
+
+.solution-explanation p {
+  margin: 0;
+  color: #555;
+  line-height: 1.6;
+}
+
+.coding-navigation {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin-top: 30px;
+}
+
+.prev-btn,
+.next-btn,
+.finish-btn {
+  padding: 15px 30px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.prev-btn:hover,
+.next-btn:hover,
+.finish-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+}
+
+.prev-btn {
+  background: linear-gradient(135deg, #858585 0%, #636363 100%);
+}
+
+.prev-btn:hover {
+  box-shadow: 0 5px 20px rgba(133, 133, 133, 0.4);
+}
+
+.finish-btn {
+  background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
+}
+
+.finish-btn:hover {
+  box-shadow: 0 5px 20px rgba(76, 175, 80, 0.4);
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .coding-navigation {
+    flex-direction: column;
+  }
+  
+  .prev-btn,
+  .next-btn,
+  .finish-btn {
+    width: 100%;
+  }
+  
+  .code-block {
+    padding: 15px;
+  }
+  
+  .code-block pre {
+    font-size: 12px;
+  }
+  
+  .coding-description {
+    padding: 15px;
+  }
+}
+
+/* Syntax Highlighting for Code (Optional Enhancement) */
+.code-block .keyword {
+  color: #c678dd;
+}
+
+.code-block .function {
+  color: #61afef;
+}
+
+.code-block .string {
+  color: #98c379;
+}
+
+.code-block .comment {
+  color: #5c6370;
+  font-style: italic;
+}
+
+.code-block .number {
+  color: #d19a66;
+}
+
+/* Animation for Solution Toggle */
+.coding-solution {
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Difficulty Badge Colors for Coding */
+.question-type-badge.coding {
+  background: #f093fb;
+}
+
+/* Loading State for Code Blocks */
+.code-block.loading {
+  background: linear-gradient(90deg, #2d2d2d 25%, #3d3d3d 50%, #2d2d2d 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* =======================
+   HR Question Styles
+======================= */
+/* =======================
+   HR Round Styles
+======================= */
+.hr-question-view {
+  width: 100%;
+  padding: 20px;
+  background: #fff9f0;
+  border-radius: 12px;
+  margin: 20px 0;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.round-description {
+  font-size: 1rem;
+  color: #555;
+  margin-bottom: 25px;
+}
+
+.hr-question-block {
+  margin-bottom: 25px;
+}
+
+.hr-question {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.hr-explanation {
+  background: #fef9e7;
+  padding: 15px;
+  border-left: 4px solid #f1c40f;
+  border-radius: 8px;
+  color: #555;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.hr-explanation p {
+  margin: 5px 0 0 0;
+}
+
+.hr-navigation {
+  display: flex;
+  justify-content: center;
+  margin-top: 30px;
+}
+
+.hr-navigation .finish-btn {
+  padding: 12px 25px;
+  background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.hr-navigation .finish-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 20px rgba(76, 175, 80, 0.4);
+}

@@ -24,7 +24,7 @@ dist-ssr
 *.sw?
 
 # Firebase
-serviceAccountKey.json
+serviceAccountKey1.json
 
 # Environment
 .env
