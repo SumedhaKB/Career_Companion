@@ -24,7 +24,8 @@ dist-ssr
 *.sw?
 
 # Firebase
-serviceAccountKey.json
+# Ignore service account key files anywhere in the repo
+**/serviceAccountKey*.json
 
 # Environment
 .env
@@ -34,5 +35,4 @@ serviceAccountKey.json
 __pycache__/
 *.pyc
 
-# from repository root
-Add-Content -Path .gitignore -Value "`n# Ignore Firebase service account keys`n**/serviceAccountKey*.json"
+# End of file
