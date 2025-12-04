@@ -33,3 +33,6 @@ serviceAccountKey.json
 # Python
 __pycache__/
 *.pyc
+
+# from repository root
+Add-Content -Path .gitignore -Value "`n# Ignore Firebase service account keys`n**/serviceAccountKey*.json"
