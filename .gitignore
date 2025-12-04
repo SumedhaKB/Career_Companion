@@ -24,7 +24,9 @@ dist-ssr
 *.sw?
 
 # Firebase
+# .gitignore
 serviceAccountKey1.json
+
 
 # Environment
 .env
