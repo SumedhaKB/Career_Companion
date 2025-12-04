@@ -61,6 +61,66 @@
             ],
             "answer": "240 m",
             "explanation": "Speed = 54 km/hr = 15 m/s. Train length = 15 × 20 = 300 m. Train + platform length = 15 × 36 = 540 m. Platform length = 540 − 300 = 240 m."
+        },
+        {
+            "id": 6,
+            "question": "A sum of Rs. 12,000 is lent at 8% per annum simple interest. What is the interest earned in 2.5 years?",
+            "options": [
+                "Rs. 2,400",
+                "Rs. 2,000",
+                "Rs. 2,880",
+                "Rs. 3,600"
+            ],
+            "answer": "Rs. 2,400",
+            "explanation": "Simple Interest = P × R × T / 100 = 12000 × 8 × 2.5 /100 = 12000 × 0.08 × 2.5 = 2400."
+        },
+        {
+            "id": 7,
+            "question": "A and B can do a piece of work in 12 and 18 days respectively. They work together for 3 days and then A leaves. How many more days will B alone take to finish the remaining work?",
+            "options": [
+                "10 days",
+                "10.5 days",
+                "12 days",
+                "9.5 days"
+            ],
+            "answer": "10.5 days",
+            "explanation": "A's rate = 1/12, B's = 1/18, together = 5/36 per day. Work done in 3 days = 3 × 5/36 = 5/12. Remaining = 1 − 5/12 = 7/12. B alone takes (7/12) ÷ (1/18) = (7/12)×18 = 10.5 days."
+        },
+        {
+            "id": 8,
+            "question": "Two cards are drawn at random from a well-shuffled deck of 52 cards. What is the probability that both cards drawn are kings (without replacement)?",
+            "options": [
+                "1/221",
+                "1/169",
+                "1/2210",
+                "1/325"
+            ],
+            "answer": "1/221",
+            "explanation": "Number of ways to choose 2 kings = C(4,2) = 6. Total ways = C(52,2) = 1326. Probability = 6/1326 = 1/221."
+        },
+        {
+            "id": 9,
+            "question": "A pipe A can fill a tank in 15 hours, pipe B in 20 hours, and a waste pipe C can empty it in 60 hours. If all three are opened together, how long will it take to fill the tank?",
+            "options": [
+                "10 hours",
+                "12 hours",
+                "9 hours",
+                "8 hours"
+            ],
+            "answer": "10 hours",
+            "explanation": "Net rate = 1/15 + 1/20 − 1/60 = (4+3−1)/60 = 6/60 = 1/10. Time = 10 hours."
+        },
+        {
+            "id": 10,
+            "question": "In how many distinct ways can the letters of the word 'LEVEL' be arranged?",
+            "options": [
+                "30",
+                "60",
+                "90",
+                "15"
+            ],
+            "answer": "30",
+            "explanation": "Letters: L,L,E,E,V (5 letters with L repeated twice and E twice). Number of arrangements = 5!/(2!×2!) = 120/4 = 30."
         }
     ]
 }
