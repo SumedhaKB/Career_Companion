@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { auth } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import Login from './components/Login';
-import CompanyList from './components/CompanyList';
-import CompanyDetail from './components/CompanyDetail';
-import Practice from './components/Practice';
+import Login from './Components/Login';
+import CompanyList from './Components/CompanyList';
+import CompanyDetail from './Components/CompanyDetail';
+import Practice from './Components/Practice';
 import './App.css';
 
 function App() {
