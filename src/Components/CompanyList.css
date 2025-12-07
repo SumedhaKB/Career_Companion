@@ -142,3 +142,186 @@
   background: rgba(255, 255, 255, 0.1);
   border-radius: 15px;
 }
+
+/* Add these styles to your existing CompanyDetail.css */
+
+/* Mock Test Section */
+.mock-test-section {
+  margin: 40px 0;
+}
+
+.mock-test-banner {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 20px;
+  padding: 50px;
+  color: white;
+  box-shadow: 0 15px 40px rgba(102, 126, 234, 0.4);
+  position: relative;
+  overflow: hidden;
+}
+
+.mock-test-banner::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+  animation: pulse 4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.1); opacity: 0.8; }
+}
+
+.mock-test-content {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+}
+
+.mock-test-content h2 {
+  font-size: 2.5rem;
+  margin-bottom: 15px;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+}
+
+.mock-test-content p {
+  font-size: 1.2rem;
+  margin-bottom: 30px;
+  opacity: 0.95;
+}
+
+.mock-features {
+  list-style: none;
+  padding: 0;
+  margin: 30px 0;
+  display: grid;
+  gap: 15px;
+  text-align: left;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.mock-features li {
+  background: rgba(255, 255, 255, 0.15);
+  padding: 15px 20px;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: transform 0.3s, background 0.3s;
+}
+
+.mock-features li:hover {
+  transform: translateX(10px);
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.mock-test-btn {
+  background: white;
+  color: #667eea;
+  padding: 18px 50px;
+  border: none;
+  border-radius: 50px;
+  font-size: 1.3rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  margin-top: 20px;
+}
+
+.mock-test-btn:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 40px rgba(0,0,0,0.4);
+  background: #f0f0f0;
+}
+
+.mock-test-btn:active {
+  transform: translateY(-2px);
+}
+
+/* Responsive for Mock Test Section */
+@media (max-width: 768px) {
+  .mock-test-banner {
+    padding: 30px 20px;
+  }
+
+  .mock-test-content h2 {
+    font-size: 1.8rem;
+  }
+
+  .mock-test-content p {
+    font-size: 1rem;
+  }
+
+  .mock-features li {
+    font-size: 0.95rem;
+    padding: 12px 15px;
+  }
+
+  .mock-test-btn {
+    padding: 15px 40px;
+    font-size: 1.1rem;
+  }
+}
+
+/* Add at the bottom of your CompanyList.css file */
+
+.general-practice-section {
+  margin: 30px 0;
+  display: flex;
+  justify-content: center;
+}
+
+.general-practice-btn {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 25px 40px;
+  border-radius: 15px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+  max-width: 700px;
+  width: 100%;
+}
+
+.general-practice-btn:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 40px rgba(102, 126, 234, 0.4);
+}
+
+.general-practice-btn .btn-icon {
+  font-size: 40px;
+}
+
+.general-practice-btn .btn-content {
+  flex: 1;
+  text-align: left;
+}
+
+.general-practice-btn .btn-content h3 {
+  margin: 0 0 5px 0;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.general-practice-btn .btn-content p {
+  margin: 0;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.general-practice-btn .btn-arrow {
+  font-size: 30px;
+  font-weight: bold;
+}
