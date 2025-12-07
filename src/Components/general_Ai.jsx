@@ -187,11 +187,21 @@ const GeneralAI = ({ user, onBack, onCompanySelect }) => {
   
   const [isRecording, setIsRecording] = useState(false);
   const [recordedVideo, setRecordedVideo] = useState(null);
+  const [recordedBlob, setRecordedBlob] = useState(null);
   const [timeLeft, setTimeLeft] = useState(90);
   const [currentMockQuestion, setCurrentMockQuestion] = useState(0);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [userAnswer, setUserAnswer] = useState('');
+  const [resumeUploaded, setResumeUploaded] = useState(false);
+  const [resumeText, setResumeText] = useState('');
+  const [aiGeneratedQuestions, setAiGeneratedQuestions] = useState([]);
+  const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
+  const [showInterviewStart, setShowInterviewStart] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [recognition, setRecognition] = useState(null);
+  const [interimTranscript, setInterimTranscript] = useState('');
+  const [finalTranscript, setFinalTranscript] = useState('');
   
   const videoRef = useRef(null);
   const mediaRecorderRef = useRef(null);
@@ -242,30 +252,6 @@ const GeneralAI = ({ user, onBack, onCompanySelect }) => {
     { q: 'How do you handle pressure?', ans: 'I handle pressure by staying organized, breaking tasks into manageable parts, and maintaining clear communication. I prioritize effectively, stay focused on solutions rather than problems, and use stress as motivation to perform at my best while maintaining work-life balance.' }
   ];
 
-  const mockInterviewQuestions = [
-    { type: 'technical', q: 'Explain the difference between a stack and a queue' },
-    { type: 'technical', q: 'What is the time complexity of searching in a binary search tree?' },
-    { type: 'technical', q: 'Explain how garbage collection works in programming languages' },
-    { type: 'technical', q: 'What is the difference between SQL and NoSQL databases?' },
-    { type: 'technical', q: 'Explain what an API is and why it is important' },
-    { type: 'technical', q: 'What is the purpose of using version control systems like Git?' },
-    { type: 'technical', q: 'Explain the concept of object-oriented programming' },
-    { type: 'technical', q: 'What is the difference between synchronous and asynchronous programming?' },
-    { type: 'technical', q: 'Explain what REST API is and its principles' },
-    { type: 'technical', q: 'What are the main principles of SOLID in software design?' },
-    { type: 'hr', q: 'Tell me about yourself and your background' },
-    { type: 'hr', q: 'Why are you interested in this position?' },
-    { type: 'hr', q: 'Describe a time when you faced a difficult challenge at work' },
-    { type: 'hr', q: 'How do you prioritize tasks when working on multiple projects?' },
-    { type: 'hr', q: 'What motivates you in your professional life?' },
-    { type: 'hr', q: 'How do you handle constructive criticism?' },
-    { type: 'hr', q: 'Describe your ideal work environment' },
-    { type: 'hr', q: 'What are your salary expectations?' },
-    { type: 'hr', q: 'How do you stay updated with industry trends?' },
-    { type: 'hr', q: 'Do you have any questions for us?' }
-  ];
-
-  // Fetch companies from Firebase
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
@@ -302,9 +288,295 @@ const GeneralAI = ({ user, onBack, onCompanySelect }) => {
     return () => clearInterval(timer);
   }, [isRecording, timeLeft]);
 
+  useEffect(() => {
+    if (!window.pdfjsLib) {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+      script.onload = () => {
+        if (window.pdfjsLib) {
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+      };
+      document.body.appendChild(script);
+    }
+
+    // Initialize Speech Recognition
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const recognitionInstance = new SpeechRecognition();
+      
+      recognitionInstance.continuous = true;
+      recognitionInstance.interimResults = true;
+      recognitionInstance.lang = 'en-US';
+      recognitionInstance.maxAlternatives = 1;
+
+      recognitionInstance.onresult = (event) => {
+        let interim = '';
+        let final = '';
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            final += transcript + ' ';
+          } else {
+            interim += transcript;
+          }
+        }
+
+        if (final) {
+          setFinalTranscript(prev => prev + final);
+        }
+        setInterimTranscript(interim);
+      };
+
+      recognitionInstance.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        if (event.error === 'no-speech') {
+          console.log('No speech detected, continuing...');
+        }
+      };
+
+      recognitionInstance.onend = () => {
+  console.log('Recognition ended, isRecording:', isRecording);
+  // Don't restart if we're not recording anymore
+};
+
+      setRecognition(recognitionInstance);
+      console.log('✅ Speech Recognition initialized');
+    } else {
+      console.warn('⚠️ Speech Recognition not supported in this browser');
+    }
+  }, []);
+
+  const handleResumeUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    console.log('Resume upload started:', file.name);
+    setIsGeneratingQuestions(true);
+
+    try {
+      const reader = new FileReader();
+      
+      reader.onload = async (e) => {
+        let extractedText = '';
+
+        if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+          try {
+            console.log('Processing PDF...');
+            
+            if (!window.pdfjsLib) {
+              await new Promise((resolve, reject) => {
+                let attempts = 0;
+                const checkPdfJs = setInterval(() => {
+                  attempts++;
+                  if (window.pdfjsLib) {
+                    clearInterval(checkPdfJs);
+                    resolve();
+                  } else if (attempts > 50) {
+                    clearInterval(checkPdfJs);
+                    reject(new Error('PDF.js failed to load'));
+                  }
+                }, 100);
+              });
+            }
+
+            const typedarray = new Uint8Array(e.target.result);
+            
+            const loadingTask = window.pdfjsLib.getDocument({
+              data: typedarray,
+              cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
+              cMapPacked: true,
+            });
+            
+            const pdf = await loadingTask.promise;
+            console.log(`PDF loaded: ${pdf.numPages} pages`);
+            
+            for (let i = 1; i <= pdf.numPages; i++) {
+              const page = await pdf.getPage(i);
+              const textContent = await page.getTextContent();
+              const pageText = textContent.items.map(item => item.str).join(' ');
+              extractedText += pageText + ' ';
+            }
+            
+            extractedText = extractedText.replace(/\s+/g, ' ').trim();
+            console.log(`Extracted text length: ${extractedText.length}`);
+            
+            if (extractedText.length === 0) {
+              throw new Error('PDF contains no extractable text');
+            }
+            
+          } catch (err) {
+            console.error('PDF parsing error:', err);
+            alert(`Unable to read PDF: ${err.message}\n\nPlease try:\n1. Uploading as .txt file\n2. Ensuring PDF is not scanned/image-based\n3. Using a different PDF`);
+            setIsGeneratingQuestions(false);
+            return;
+          }
+        } else {
+          extractedText = e.target.result.trim();
+          console.log('Text file loaded, length:', extractedText.length);
+        }
+
+        if (!extractedText || extractedText.trim().length < 50) {
+          alert(`Resume too short (${extractedText.length} characters).\n\nPlease ensure your resume has sufficient content.`);
+          setIsGeneratingQuestions(false);
+          return;
+        }
+
+        console.log('Sending to backend...');
+        setResumeText(extractedText);
+        await generateQuestionsFromResume(extractedText);
+      };
+
+      reader.onerror = (error) => {
+        console.error('File reader error:', error);
+        alert('Error reading file. Please try again.');
+        setIsGeneratingQuestions(false);
+      };
+
+      if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+        reader.readAsArrayBuffer(file);
+      } else {
+        reader.readAsText(file);
+      }
+    } catch (err) {
+      console.error('Upload error:', err);
+      alert('Error uploading resume: ' + err.message);
+      setIsGeneratingQuestions(false);
+    }
+  };
+
+  const generateQuestionsFromResume = async (resumeText) => {
+    try {
+      console.log('Generating questions with Groq AI...');
+      
+      const limitedResumeText = resumeText.substring(0, 4000);
+      const API_URL = 'http://localhost:3001/api/generate-questions';
+      
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resumeText: limitedResumeText
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Backend error:', response.status, errorText);
+        throw new Error(`Backend returned status ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.content || !data.content[0] || !data.content[0].text) {
+        throw new Error('Invalid response from server');
+      }
+      
+      let questionsText = data.content[0].text.trim();
+      
+      questionsText = questionsText.replace(/```json\s*/g, '');
+      questionsText = questionsText.replace(/```\s*/g, '');
+      questionsText = questionsText.replace(/^[^[]*/, '');
+      questionsText = questionsText.replace(/[^\]]*$/, '');
+      questionsText = questionsText.trim();
+      
+      console.log('Parsing questions...');
+      const questions = JSON.parse(questionsText);
+      
+      if (!Array.isArray(questions) || questions.length < 10) {
+        throw new Error('Invalid questions format or too few questions');
+      }
+      
+      console.log(`✅ Generated ${questions.length} questions successfully!`);
+      setAiGeneratedQuestions(questions);
+      setResumeUploaded(true);
+      setShowInterviewStart(true);
+      setIsGeneratingQuestions(false);
+      
+    } catch (err) {
+      console.error('Question generation error:', err);
+      
+      let errorMessage = `Failed to generate questions: ${err.message}\n\n`;
+      
+      if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+        errorMessage += 'Cannot connect to backend server.\n\n';
+        errorMessage += 'Please ensure:\n';
+        errorMessage += '1. Backend server is running (npm start in server folder)\n';
+        errorMessage += '2. Server is running on http://localhost:3001\n';
+        errorMessage += '3. Check terminal for any server errors';
+      } else if (err.message.includes('status 500')) {
+        errorMessage += ' Server error.\n\n';
+        errorMessage += 'Please check:\n';
+        errorMessage += '1. GROQ_API_KEY is set in .env file\n';
+        errorMessage += '2. API key is valid\n';
+        errorMessage += '3. Server terminal for error details';
+      } else {
+        errorMessage += 'Please check:\n';
+        errorMessage += '1. Backend server is running\n';
+        errorMessage += '2. Groq API key is correct in .env\n';
+        errorMessage += '3. Resume has enough content';
+      }
+      
+      alert(errorMessage);
+      setIsGeneratingQuestions(false);
+      setResumeUploaded(false);
+    }
+  };
+
+  const getAutoRefinement = async (transcribedText) => {
+    const currentQ = aiGeneratedQuestions[currentMockQuestion];
+    
+    setChatMessages([
+      { role: 'assistant', content: 'Analyzing your answer and providing feedback...' }
+    ]);
+
+    try {
+      console.log('Getting automatic AI refinement...');
+      const API_URL = 'http://localhost:3001/api/refine-answer';
+      
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: currentQ.q,
+          answer: transcribedText,
+          userRequest: "Please provide a refined, professional version of my answer with feedback on what I did well and what could be improved."
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Backend error:', response.status, errorText);
+        throw new Error(`Backend returned status ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.content || !data.content[0] || !data.content[0].text) {
+        throw new Error('Invalid response from server');
+      }
+      
+      const refinedAnswer = data.content[0].text.trim();
+      
+      setChatMessages([
+        { role: 'assistant', content: refinedAnswer }
+      ]);
+      
+    } catch (err) {
+      console.error('AI refinement error:', err);
+      
+      setChatMessages([
+        { 
+          role: 'assistant', 
+          content: `I've transcribed your answer successfully! You can review it above and ask me specific questions about how to improve it.\n\nYour transcribed answer:\n"${transcribedText}"`
+        }
+      ]);
+    }
+  };
+
   const startRecording = async () => {
     try {
-      // Check if mediaDevices is supported
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         alert('Your browser does not support camera access. Please use a modern browser like Chrome, Firefox, or Edge.');
         return;
@@ -313,28 +585,93 @@ const GeneralAI = ({ user, onBack, onCompanySelect }) => {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       streamRef.current = stream;
       
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
+      setIsRecording(true);
+      setTimeLeft(90);
+      setFinalTranscript('');
+      setInterimTranscript('');
+      
+      // Small delay to ensure state updates before setting video
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play().catch(err => console.error('Play error:', err));
+        }
+      }, 100);
 
-      const mediaRecorder = new MediaRecorder(stream);
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'video/webm;codecs=vp8,opus'
+      });
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
 
       mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
+        if (e.data && e.data.size > 0) {
+          chunksRef.current.push(e.data);
+        }
       };
 
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'video/webm' });
-        const url = URL.createObjectURL(blob);
-        setRecordedVideo(url);
-      };
 
-      mediaRecorder.start();
-      setIsRecording(true);
-      setTimeLeft(90);
+      mediaRecorder.onstop = async () => {
+  console.log('Recording stopped, chunks collected:', chunksRef.current.length);
+  
+  if (chunksRef.current.length === 0) {
+    console.error('No data recorded!');
+    alert('Recording failed - no data captured. Please try again.');
+    setIsTranscribing(false);
+    return;
+  }
+  
+  const blob = new Blob(chunksRef.current, { type: 'video/webm' });
+  console.log('Created blob, size:', blob.size, 'bytes');
+  
+  if (blob.size < 1000) {
+    console.error('Blob too small:', blob.size);
+    alert('Recording is too short or empty. Please try again.');
+    setIsTranscribing(false);
+    return;
+  }
+  
+  const url = URL.createObjectURL(blob);
+  setRecordedVideo(url);
+  setRecordedBlob(blob);
+  
+  // Use the captured transcript from window object
+  const transcribedText = window.capturedTranscript || '';
+  console.log('Using captured transcript:', transcribedText.length, 'characters');
+  
+  if (transcribedText) {
+    console.log(' Speech Recognition transcribed:', transcribedText.length, 'characters');
+    setUserAnswer(transcribedText);
+    setIsTranscribing(false);
+    
+    // Automatically get AI refinement
+    await getAutoRefinement(transcribedText);
+  } else {
+    console.warn(' No speech detected during recording');
+    setIsTranscribing(false);
+    alert('No speech was detected. Please type your answer manually or try recording again.');
+  }
+  
+  // Clear the captured transcript
+  window.capturedTranscript = '';
+};
+
+      mediaRecorder.start(1000);
+      console.log('MediaRecorder started');
+      
+      // Start speech recognition
+      if (recognition) {
+        try {
+          recognition.start();
+          console.log('✅ Speech Recognition started');
+        } catch (e) {
+          console.warn('Speech Recognition already started or error:', e);
+        }
+      } else {
+        console.warn('⚠️ Speech Recognition not available - transcription will not work');
+        alert('Speech recognition is not available in your browser. You can still record video, but you\'ll need to type your answer manually.');
+      }
+      
     } catch (err) {
       console.error('Camera error:', err);
       let errorMessage = 'Unable to access camera. ';
@@ -345,10 +682,6 @@ const GeneralAI = ({ user, onBack, onCompanySelect }) => {
         errorMessage += 'No camera or microphone found. Please connect a camera and try again.';
       } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
         errorMessage += 'Camera is already in use by another application. Please close other apps using the camera.';
-      } else if (err.name === 'OverconstrainedError') {
-        errorMessage += 'Camera does not support the required settings.';
-      } else if (err.name === 'SecurityError') {
-        errorMessage += 'Camera access blocked due to security settings. Please use HTTPS or localhost.';
       } else {
         errorMessage += 'Error: ' + err.message;
       }
@@ -357,76 +690,169 @@ const GeneralAI = ({ user, onBack, onCompanySelect }) => {
     }
   };
 
+  
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
+      // Capture transcript BEFORE stopping recognition
+      const capturedTranscript = finalTranscript.trim();
+      console.log('Captured transcript before stop:', capturedTranscript);
+      
+      // Stop recognition first
+      if (recognition) {
+        recognition.stop();
+      }
+      
+      // Stop recording
       mediaRecorderRef.current.stop();
       streamRef.current?.getTracks().forEach(track => track.stop());
       setIsRecording(false);
+      setIsTranscribing(true);
+      
+      // Store the captured transcript in a ref or pass it directly
+      window.capturedTranscript = capturedTranscript;
     }
   };
 
   const retakeVideo = () => {
+    if (recordedVideo) {
+      URL.revokeObjectURL(recordedVideo);
+    }
     setRecordedVideo(null);
+    setRecordedBlob(null);
     setUserAnswer('');
     setChatMessages([]);
+    setTimeLeft(90);
+    setFinalTranscript('');
+    setInterimTranscript('');
+  };
+
+  const replayVideo = () => {
+    if (videoRef.current && recordedVideo) {
+      videoRef.current.src = recordedVideo;
+      videoRef.current.load();
+      videoRef.current.play();
+    }
+  };
+
+  const submitVideo = () => {
+    if (!userAnswer.trim()) {
+      alert('Please wait for transcription to complete or type your answer manually!');
+      return;
+    }
+    
+    // Only send manual message if user has typed something in the chat input
+    if (chatInput.trim()) {
+      handleSendMessage();
+    }
+  };
+
+  const goToNextQuestion = () => {
+    if (currentMockQuestion < aiGeneratedQuestions.length - 1) {
+      if (recordedVideo) {
+        URL.revokeObjectURL(recordedVideo);
+      }
+      
+      setCurrentMockQuestion(currentMockQuestion + 1);
+      setRecordedVideo(null);
+      setRecordedBlob(null);
+      setUserAnswer('');
+      setChatMessages([]);
+      setIsRecording(false);
+      setTimeLeft(90);
+      setFinalTranscript('');
+      setInterimTranscript('');
+    } else {
+      alert('Mock interview completed! Great job!');
+      resetMockInterview();
+    }
+  };
+
+  const resetMockInterview = () => {
+    if (recordedVideo) {
+      URL.revokeObjectURL(recordedVideo);
+    }
+    
+    setCurrentView('home');
+    setCurrentMockQuestion(0);
+    setRecordedVideo(null);
+    setRecordedBlob(null);
+    setUserAnswer('');
+    setChatMessages([]);
+    setIsRecording(false);
+    setResumeUploaded(false);
+    setResumeText('');
+    setAiGeneratedQuestions([]);
+    setShowInterviewStart(false);
+    setTimeLeft(90);
+    setFinalTranscript('');
+    setInterimTranscript('');
   };
 
   const handleSendMessage = async () => {
-    // Check if user has entered their answer
     if (!userAnswer.trim()) {
       alert('Please type your answer in the text area above first!');
       return;
     }
 
-    // Use chatInput if provided, otherwise use default request
-    const userMessage = chatInput.trim() || "Please provide a refined version of my answer";
+    const currentQ = aiGeneratedQuestions[currentMockQuestion];
+    const userMessage = chatInput.trim() || "Please provide a refined, professional version of my answer";
     
     const userMsg = { role: 'user', content: userMessage };
     setChatMessages(prev => [...prev, userMsg]);
     setChatInput('');
 
-    // Add loading message
     setChatMessages(prev => [...prev, { role: 'assistant', content: 'Analyzing your answer...' }]);
 
     try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      console.log('Refining answer with Groq AI...');
+      const API_URL = 'http://localhost:3001/api/refine-answer';
+      
+      const response = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          messages: [{
-            role: 'user',
-            content: `You are an interview coach. The candidate was asked: "${mockInterviewQuestions[currentMockQuestion].q}"
-
-Their answer was: "${userAnswer}"
-
-User request: "${userMessage}"
-
-Provide a refined, improved version of their answer that:
-1. Is more structured and professional
-2. Highlights key points clearly
-3. Is 4-5 sentences long
-4. Maintains the candidate's core message but enhances it
-
-Provide ONLY the refined answer, no preamble or explanations.`
-          }]
+          question: currentQ.q,
+          answer: userAnswer,
+          userRequest: userMessage
         })
       });
 
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Backend error:', response.status, errorText);
+        throw new Error(`Backend returned status ${response.status}`);
+      }
+
       const data = await response.json();
-      const refinedAnswer = data.content[0].text;
       
-      // Remove loading message and add real response
+      if (!data.content || !data.content[0] || !data.content[0].text) {
+        throw new Error('Invalid response from server');
+      }
+      
+      const refinedAnswer = data.content[0].text.trim();
+      
       setChatMessages(prev => {
         const filtered = prev.filter(msg => msg.content !== 'Analyzing your answer...');
         return [...filtered, { role: 'assistant', content: refinedAnswer }];
       });
+      
     } catch (err) {
-      console.error('AI Error:', err);
+      console.error('AI refinement error:', err);
+      
+      let errorMessage = `Error: ${err.message}\n\n`;
+      
+      if (err.message.includes('Failed to fetch')) {
+        errorMessage += 'Cannot connect to backend server. Please ensure the server is running on http://localhost:3001';
+      } else {
+        errorMessage += 'Your original answer is good! Keep practicing.';
+      }
+      
       setChatMessages(prev => {
         const filtered = prev.filter(msg => msg.content !== 'Analyzing your answer...');
-        return [...filtered, { role: 'assistant', content: 'Error getting refined answer. Please check your connection and try again.' }];
+        return [...filtered, { 
+          role: 'assistant', 
+          content: errorMessage
+        }];
       });
     }
   };
@@ -465,8 +891,8 @@ Provide ONLY the refined answer, no preamble or explanations.`
     <div style={styles.pageContainer}>
       <h1 style={styles.heading1}>Interview Preparation Platform</h1>
       <div style={styles.grid}>
-        <div className="bg-white p-6 rounded-lg shadow-lg hover:shadow-xl transition cursor-pointer" onClick={() => setCurrentView('general')}>
-          <h2 style={{...styles.heading3, color: '#2563eb'}}>General Practice</h2>
+        <div style={styles.card} onClick={() => setCurrentView('general')} onMouseEnter={e => e.currentTarget.style.boxShadow = '0 10px 15px rgba(0,0,0,0.1)'} onMouseLeave={e => e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)'}>
+          <h2 style={{...styles.heading3, color: '#2563eb'}}>General Section</h2>
           <p style={{color: '#6b7280'}}>Practice aptitude, technical, coding, and HR questions</p>
         </div>
         <div style={styles.card} onClick={() => setCurrentView('company')} onMouseEnter={e => e.currentTarget.style.boxShadow = '0 10px 15px rgba(0,0,0,0.1)'} onMouseLeave={e => e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)'}>
@@ -485,7 +911,7 @@ Provide ONLY the refined answer, no preamble or explanations.`
           onMouseEnter={e => e.currentTarget.style.backgroundColor = '#1d4ed8'}
           onMouseLeave={e => e.currentTarget.style.backgroundColor = '#2563eb'}
         >
-          ← Back to Companies
+          ← Back to Home 
         </button>
       )}
     </div>
@@ -629,149 +1055,264 @@ Provide ONLY the refined answer, no preamble or explanations.`
   };
 
   const renderMockInterview = () => {
-    const currentQ = mockInterviewQuestions[currentMockQuestion];
-
-    return (
-      <div style={styles.pageContainer}>
-        <button onClick={() => {setCurrentView('home'); setCurrentMockQuestion(0); setRecordedVideo(null);}} style={styles.backButton}>← Back</button>
-        
-        {currentMockQuestion === 0 && !isRecording && !recordedVideo && (
+    if (!resumeUploaded) {
+      return (
+        <div style={styles.pageContainer}>
+          <button onClick={() => setCurrentView('home')} style={styles.backButton}>← Back</button>
+          
           <div style={{maxWidth: '600px', margin: '0 auto', ...styles.card}}>
             <h2 style={{...styles.heading2, color: '#9333ea'}}>AI Mock Interview</h2>
             <div style={{marginBottom: '24px', color: '#374151'}}>
-              <p style={{marginBottom: '16px'}}>Welcome to the AI Mock Interview! Here's how it works:</p>
+              <p style={{marginBottom: '16px'}}>Welcome to the AI-powered Mock Interview!</p>
+              <p style={{marginBottom: '16px'}}>Please upload your resume (PDF or TXT format). The AI will analyze your skills, projects, and experience to generate personalized interview questions.</p>
               <ul style={{listStyle: 'disc', paddingLeft: '24px', display: 'flex', flexDirection: 'column', gap: '8px'}}>
-                <li>You will be presented with 20 interview questions (10 technical + 10 HR)</li>
-                <li>Click "Start" to begin recording your answer</li>
-                <li>You have 1 minute 30 seconds to answer each question</li>
-                <li>After recording, you can replay your answer or retake it</li>
-                <li>Use the AI chat assistant to get a refined version of your answer</li>
+                <li>Upload your resume to get started</li>
+                <li>AI will generate personalized questions</li>
+                <li>You'll have 90 seconds per question</li>
+                <li>Get AI-powered feedback on your answers</li>
               </ul>
             </div>
-            <button onClick={startRecording} style={{...styles.button, ...styles.buttonPurple}} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#7e22ce'} onMouseLeave={e => e.currentTarget.style.backgroundColor = '#9333ea'}>
+
+            {isGeneratingQuestions ? (
+              <div style={{textAlign: 'center', padding: '32px 0'}}>
+                <p style={{color: '#9333ea', fontSize: '18px', marginBottom: '16px', fontWeight: 'bold'}}>🔍 Analyzing your resume...</p>
+                <p style={{color: '#6b7280', fontSize: '14px'}}>This may take a few seconds...</p>
+              </div>
+            ) : (
+              <div>
+                <input
+                  type="file"
+                  accept=".pdf,.txt"
+                  onChange={handleResumeUpload}
+                  style={{display: 'none'}}
+                  id="resume-upload"
+                />
+                <label htmlFor="resume-upload">
+                  <div
+                    style={{
+                      ...styles.button,
+                      ...styles.buttonPurple,
+                      width: '100%',
+                      justifyContent: 'center',
+                      cursor: 'pointer'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = '#7e22ce'}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = '#9333ea'}
+                  >
+                    📄 Upload Resume (PDF or TXT)
+                  </div>
+                </label>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    if (showInterviewStart) {
+      return (
+        <div style={styles.pageContainer}>
+          <button onClick={resetMockInterview} style={styles.backButton}>← Back</button>
+          
+          <div style={{maxWidth: '600px', margin: '0 auto', ...styles.card}}>
+            <h2 style={{...styles.heading2, color: '#9333ea'}}>Ready to Start!</h2>
+            <div style={{marginBottom: '24px', color: '#374151'}}>
+              <p style={{marginBottom: '16px'}}>Your personalized questions are ready! Here's what to expect:</p>
+              <ul style={{listStyle: 'disc', paddingLeft: '24px', display: 'flex', flexDirection: 'column', gap: '8px'}}>
+                <li>{aiGeneratedQuestions.length} questions based on your resume</li>
+                <li>90 seconds per question</li>
+                <li>Video recording of your answers</li>
+                <li>AI-powered answer refinement</li>
+              </ul>
+            </div>
+            <button 
+              onClick={() => setShowInterviewStart(false)} 
+              style={{...styles.button, ...styles.buttonPurple, width: '100%', justifyContent: 'center'}} 
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#7e22ce'} 
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = '#9333ea'}
+            >
               <Play size={20} /> Start Interview
             </button>
           </div>
-        )}
+        </div>
+      );
+    }
 
-        {(isRecording || recordedVideo) && (
-          <div style={{maxWidth: '1200px', margin: '0 auto'}}>
-            <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px'}}>
-              <div style={styles.card}>
-                <div style={{marginBottom: '16px'}}>
-                  <span style={{...styles.badge, ...(currentQ.type === 'technical' ? styles.badgeTechnical : styles.badgeHr)}}>
-                    {currentQ.type.toUpperCase()}
-                  </span>
-                  <span style={{marginLeft: '16px', color: '#6b7280'}}>Question {currentMockQuestion + 1}/20</span>
-                </div>
-                <h3 style={{...styles.heading3, marginBottom: '16px'}}>{currentQ.q}</h3>
-                
-                <div style={styles.video}>
-                  {!recordedVideo ? (
-                    <video ref={videoRef} style={{width: '100%'}} autoPlay muted />
-                  ) : (
-                    <video src={recordedVideo} style={{width: '100%'}} controls />
-                  )}
-                </div>
+    const currentQ = aiGeneratedQuestions[currentMockQuestion];
 
-                {isRecording && (
-                  <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px'}}>
+    return (
+      <div style={styles.pageContainer}>
+        <button onClick={resetMockInterview} style={styles.backButton}>← Back</button>
+        
+        <div style={{maxWidth: '1200px', margin: '0 auto'}}>
+          <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px'}}>
+            <div style={styles.card}>
+              <div style={{marginBottom: '16px'}}>
+                <span style={{...styles.badge, ...(currentQ.type === 'technical' ? styles.badgeTechnical : styles.badgeHr)}}>
+                  {currentQ.type.toUpperCase()}
+                </span>
+                <span style={{marginLeft: '16px', color: '#6b7280'}}>Question {currentMockQuestion + 1}/{aiGeneratedQuestions.length}</span>
+              </div>
+              <h3 style={{...styles.heading3, marginBottom: '16px'}}>{currentQ.q}</h3>
+              
+              <div style={styles.video}>
+                {isRecording ? (
+                  <video ref={videoRef} style={{width: '100%', height: '400px'}} autoPlay muted />
+                ) : recordedVideo ? (
+                  <video ref={videoRef} src={recordedVideo} style={{width: '100%', height: '400px'}} controls />
+                ) : (
+                  <div style={{width: '100%', height: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280'}}>
+                    Click "Start Recording" to begin
+                  </div>
+                )}
+              </div>
+
+              {isRecording && (
+                <div style={{display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px'}}>
+                  <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
                     <div style={styles.timer}>
                       <Clock size={20} />
                       <span>{Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}</span>
                     </div>
                     <button onClick={stopRecording} style={{...styles.button, ...styles.buttonDanger}} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#dc2626'} onMouseLeave={e => e.currentTarget.style.backgroundColor = '#ef4444'}>
-                      <StopCircle size={20} /> Stop
+                      <StopCircle size={20} /> Stop Recording
                     </button>
                   </div>
-                )}
+                  {(finalTranscript || interimTranscript) && (
+                    <div style={{backgroundColor: '#f0fdf4', padding: '12px', borderRadius: '6px', border: '2px solid #10b981'}}>
+                      <p style={{fontSize: '12px', fontWeight: 'bold', color: '#059669', marginBottom: '4px'}}>🎤 Live Transcription:</p>
+                      <p style={{fontSize: '14px', color: '#374151'}}>
+                        {finalTranscript}
+                        <span style={{color: '#9ca3af'}}>{interimTranscript}</span>
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
 
-                {recordedVideo && (
-                  <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
-                    <button onClick={retakeVideo} style={{...styles.button, ...styles.buttonWarning, width: '100%', justifyContent: 'center'}} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#d97706'} onMouseLeave={e => e.currentTarget.style.backgroundColor = '#f59e0b'}>
-                      <RefreshCw size={20} /> Retake
-                    </button>
+              {recordedVideo && (
+                <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
+                  <button 
+                    onClick={replayVideo} 
+                    style={{...styles.button, ...styles.buttonPrimary, width: '100%', justifyContent: 'center'}} 
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = '#1d4ed8'} 
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = '#2563eb'}
+                  >
+                    <Play size={20} /> Replay Video
+                  </button>
+                  <button 
+                    onClick={retakeVideo} 
+                    style={{...styles.button, ...styles.buttonWarning, width: '100%', justifyContent: 'center'}} 
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = '#d97706'} 
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = '#f59e0b'}
+                  >
+                    <RefreshCw size={20} /> Retake Answer
+                  </button>
+                  <button 
+                    onClick={submitVideo}
+                    style={{...styles.button, ...styles.buttonPurple, width: '100%', justifyContent: 'center'}}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = '#7e22ce'}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = '#9333ea'}
+                  >
+                    <Check size={20} /> Submit Answer
+                  </button>
+                  {chatMessages.length > 0 && (
                     <button 
-                      onClick={() => {
-                        if (currentMockQuestion < mockInterviewQuestions.length - 1) {
-                          setCurrentMockQuestion(currentMockQuestion + 1);
-                          setRecordedVideo(null);
-                          setUserAnswer('');
-                          setChatMessages([]);
-                        } else {
-                          alert('Mock interview completed!');
-                          setCurrentView('home');
-                          setCurrentMockQuestion(0);
-                        }
-                      }}
+                      onClick={goToNextQuestion}
                       style={{...styles.button, ...styles.buttonSuccess, width: '100%', justifyContent: 'center'}}
                       onMouseEnter={e => e.currentTarget.style.backgroundColor = '#059669'}
                       onMouseLeave={e => e.currentTarget.style.backgroundColor = '#10b981'}
                     >
-                      Next Question →
+                      Next Question <ChevronRight size={20} />
                     </button>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
 
-              <div style={styles.chatContainer}>
-                <h3 style={{...styles.heading3, display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px'}}>
-                  <MessageSquare /> AI Answer Refinement
-                </h3>
-                
-                {!recordedVideo && (
-                  <div style={{flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280'}}>
-                    Complete your recording to get AI feedback
-                  </div>
-                )}
+              {!isRecording && !recordedVideo && (
+                <button 
+                  onClick={startRecording}
+                  style={{...styles.button, ...styles.buttonPurple, width: '100%', justifyContent: 'center'}}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = '#7e22ce'}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = '#9333ea'}
+                >
+                  <Play size={20} /> Start Recording
+                </button>
+              )}
+            </div>
 
-                {recordedVideo && (
-                  <>
-                    <div style={styles.chatMessages}>
-                      {chatMessages.length === 0 && (
-                        <div style={{color: '#6b7280', textAlign: 'center', padding: '32px 0'}}>
-                          Type your answer in the box below, and I'll provide a refined version!
-                        </div>
-                      )}
-                      {chatMessages.map((msg, idx) => (
+            <div style={styles.chatContainer}>
+              <h3 style={{...styles.heading3, display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px'}}>
+                <MessageSquare /> AI Answer Refinement
+              </h3>
+              
+              {!recordedVideo && (
+                <div style={{flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280'}}>
+                  Record and submit your answer to get AI feedback
+                </div>
+              )}
+
+              {recordedVideo && (
+                <>
+                  <div style={styles.chatMessages}>
+                    {isTranscribing ? (
+                      <div style={{color: '#9333ea', textAlign: 'center', padding: '32px 0'}}>
+                        <p style={{fontSize: '18px', fontWeight: 'bold', marginBottom: '8px'}}>🎤 Processing your answer...</p>
+                        <p style={{fontSize: '14px', color: '#6b7280'}}>AI is analyzing your response</p>
+                      </div>
+                    ) : chatMessages.length === 0 ? (
+                      <div style={{color: '#6b7280', textAlign: 'center', padding: '32px 0'}}>
+                        <p style={{marginBottom: '8px'}}>Record your answer and get instant AI feedback!</p>
+                        <p style={{fontSize: '14px'}}>💡 Tip: Speak clearly and naturally</p>
+                      </div>
+                    ) : (
+                      chatMessages.map((msg, idx) => (
                         <div key={idx} style={msg.role === 'user' ? styles.chatUser : styles.chatAi}>
                           <p style={{fontWeight: '600', marginBottom: '4px'}}>{msg.role === 'user' ? 'You' : 'AI Coach'}</p>
-                          <p style={{color: '#374151'}}>{msg.content}</p>
+                          <p style={{color: '#374151', whiteSpace: 'pre-wrap'}}>{msg.content}</p>
                         </div>
-                      ))}
-                    </div>
-                    
-                    <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
-                      <textarea
-                        value={userAnswer}
-                        onChange={(e) => setUserAnswer(e.target.value)}
-                        placeholder="Type your answer here..."
-                        style={{...styles.textarea, height: '96px'}}
+                      ))
+                    )}
+                  </div>
+                  
+                  <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
+                    <textarea
+                      value={userAnswer}
+                      onChange={(e) => setUserAnswer(e.target.value)}
+                      placeholder="Your transcribed answer will appear here..."
+                      style={{...styles.textarea, height: '120px'}}
+                      disabled={isTranscribing}
+                    />
+                    <div style={{display: 'flex', gap: '8px'}}>
+                      <input
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
+                        placeholder="Ask for improvements..."
+                        style={{...styles.input, flex: 1}}
+                        disabled={isTranscribing}
                       />
-                      <div style={{display: 'flex', gap: '8px'}}>
-                        <input
-                          value={chatInput}
-                          onChange={(e) => setChatInput(e.target.value)}
-                          onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                          placeholder="Ask for refined answer..."
-                          style={{...styles.input, flex: 1}}
-                        />
-                        <button
-                          onClick={handleSendMessage}
-                          style={{...styles.button, ...styles.buttonPurple}}
-                          onMouseEnter={e => e.currentTarget.style.backgroundColor = '#7e22ce'}
-                          onMouseLeave={e => e.currentTarget.style.backgroundColor = '#9333ea'}
-                        >
-                          <Send size={20} /> Send
-                        </button>
-                      </div>
+                      <button
+                        onClick={handleSendMessage}
+                        disabled={!userAnswer.trim() || isTranscribing}
+                        style={{
+                          ...styles.button, 
+                          ...styles.buttonPurple,
+                          opacity: (!userAnswer.trim() || isTranscribing) ? 0.5 : 1,
+                          cursor: (!userAnswer.trim() || isTranscribing) ? 'not-allowed' : 'pointer'
+                        }}
+                        onMouseEnter={e => (userAnswer.trim() && !isTranscribing) && (e.currentTarget.style.backgroundColor = '#7e22ce')}
+                        onMouseLeave={e => (userAnswer.trim() && !isTranscribing) && (e.currentTarget.style.backgroundColor = '#9333ea')}
+                      >
+                        <Send size={20} />
+                      </button>
                     </div>
-                  </>
-                )}
-              </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
-        )}
+        </div>
       </div>
     );
   };
