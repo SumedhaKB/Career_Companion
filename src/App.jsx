@@ -7,7 +7,6 @@ import GeneralAI from './Components/general_Ai';
 import CompanyDetail from './Components/CompanyDetail';
 import Practice from './components/Practice';
 import MockTest from './Components/MockTest';
-import GeneralAI from './Components/general_Ai';
 import './App.css';
 
 function App() {
@@ -16,9 +15,6 @@ function App() {
   const [currentPage, setCurrentPage] = useState('landing'); // Start with landing page
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [selectedRound, setSelectedRound] = useState(null);
-
-
-
 
   useEffect(() => {
   const unsubscribe = onAuthStateChanged(auth, async (user) => {
