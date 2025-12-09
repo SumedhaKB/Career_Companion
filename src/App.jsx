@@ -12,35 +12,37 @@ import './App.css';
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState('landing'); // Start with landing page
+  const [currentPage, setCurrentPage] = useState('landing'); // Always start with landing
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [selectedRound, setSelectedRound] = useState(null);
 
   useEffect(() => {
-  const unsubscribe = onAuthStateChanged(auth, async (user) => {
-    setUser(user);
-    setLoading(false);
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        await user.reload();
+        const updatedUser = auth.currentUser;
 
-    // ❗ Only redirect when email is verified
-    if (user) {
-      await user.reload(); // refresh verification status
-      
-      if (user.emailVerified) {
-        setCurrentPage('landing');  // HOME page
+        if (updatedUser?.emailVerified) {
+          setUser(updatedUser);
+          // Don't auto-redirect, let user stay on current page
+        } else {
+          setUser(null);
+        }
       } else {
-        setCurrentPage('login');    // force stay on login
+        setUser(null);
       }
-    } else {
-      setCurrentPage('login');      // no user → always login
-    }
-  });
 
-  return unsubscribe;
-}, []);
+      setLoading(false);
+    });
 
+    return unsubscribe;
+  }, []);
 
   const handleGetStarted = () => {
-    // This takes user to the GeneralAI page which has Home, General Section, Company Based, AI Interview
+    setCurrentPage('login');
+  };
+
+  const handleLoginSuccess = () => {
     setCurrentPage('generalAI');
   };
 
@@ -71,6 +73,12 @@ function App() {
     setSelectedRound(null);
   };
 
+  const handleLogout = () => {
+    setCurrentPage('landing');
+    setSelectedCompany(null);
+    setSelectedRound(null);
+  };
+
   if (loading) {
     return (
       <div className="loading-screen">
@@ -80,28 +88,29 @@ function App() {
     );
   }
 
-  if (!user) {
-    return <Login />;
-  }
-
   return (
     <div className="App">
       {currentPage === 'landing' && (
         <LandingPage 
-          user={user} 
           onGetStarted={handleGetStarted}
         />
       )}
+
+      {currentPage === 'login' && (
+        <Login 
+          onLoginSuccess={handleLoginSuccess}
+        />
+      )}
       
-      {currentPage === 'generalAI' && (
+      {currentPage === 'generalAI' && user && (
         <GeneralAI 
           user={user}
-          onBack={() => setCurrentPage('landing')}
+          onLogout={handleLogout}
           onCompanySelect={handleCompanySelect}
         />
       )}
       
-      {currentPage === 'companyDetail' && selectedCompany && (
+      {currentPage === 'companyDetail' && selectedCompany && user && (
         <CompanyDetail 
           company={selectedCompany}
           onPracticeStart={handlePracticeStart}
@@ -110,7 +119,7 @@ function App() {
         />
       )}
       
-      {currentPage === 'practice' && selectedCompany && selectedRound && (
+      {currentPage === 'practice' && selectedCompany && selectedRound && user && (
         <Practice 
           company={selectedCompany}
           round={selectedRound}
@@ -119,16 +128,16 @@ function App() {
         />
       )}
       
-      {currentPage === 'mockTest' && selectedCompany && (
+      {currentPage === 'mockTest' && selectedCompany && user && (
         <MockTest 
           company={selectedCompany}
           user={user}
           onBack={handleBackToDetail}
         />
       )}
-
     </div>
   );
 }
 
 export default App;
+

@@ -3,61 +3,21 @@ import { auth, db } from '../firebase';
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
-  signInWithPopup,
-  GoogleAuthProvider,
   sendEmailVerification, 
   updateProfile, 
   reload 
 } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { useNavigate } from "react-router-dom";
-import './Login.css';
+import { doc, setDoc } from 'firebase/firestore';
+import Loginimg from './Images/login_page_image.png'
 
-function Login() {
+function Login({ onLoginSuccess }) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
 
-  // ---------------------- GOOGLE SIGN IN ----------------------
-  const handleGoogleSignIn = async () => {
-    setLoading(true);
-    setError("");
-    
-    try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-      
-      // Check if user document exists in Firestore
-      const sanitizedEmail = user.email.replace(/\./g, "_");
-      const userDocRef = doc(db, "users", sanitizedEmail);
-      const userDoc = await getDoc(userDocRef);
-      
-      // If user doesn't exist, create a new document
-      if (!userDoc.exists()) {
-        await setDoc(userDocRef, {
-          email: user.email,
-          uid: user.uid,
-          createdAt: new Date(),
-          verified: true, // Google accounts are pre-verified
-          name: user.displayName || 'User'
-        });
-      }
-      
-      localStorage.setItem("userEmail", sanitizedEmail);
-      navigate("/home");
-    } catch (err) {
-      setError(err.message);
-    }
-    
-    setLoading(false);
-  };
-
-  // ---------------------- SIGN UP ----------------------
   const handleSignup = async () => {
     if (!email || !password || !name) {
       alert("Please fill all fields");
@@ -94,7 +54,6 @@ function Login() {
     setLoading(false);
   };
 
-  // ---------------------- LOGIN ----------------------
   const handleLogin = async () => {
     if (!email || !password) {
       alert("Please fill all fields");
@@ -119,7 +78,10 @@ function Login() {
 
       const sanitizedEmail = email.replace(/\./g, "_");
       localStorage.setItem("userEmail", sanitizedEmail);
-      navigate("/home");
+      
+      if (onLoginSuccess) {
+        onLoginSuccess();
+      }
     } catch (err) {
       setError(err.message);
     }
@@ -134,83 +96,338 @@ function Login() {
   };
 
   return (
-    <div className="login-container">
-      <div className="login-card">
-        <div className="login-header">
-          <h1>🎯 Interview Prep Platform</h1>
-          <p>Prepare for top tech companies</p>
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#f8f9fa',
+      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      padding: '20px'
+    }}>
+      {/* Main Container - Square with Rounded Corners */}
+      <div style={{
+        width: '900px',
+        height: '550px',
+        display: 'flex',
+        borderRadius: '24px',
+        overflow: 'hidden',
+        boxShadow: '0 20px 40px rgba(0, 0, 0, 0.08), 0 8px 24px rgba(0, 0, 0, 0.05)',
+        backgroundColor: 'white'
+      }}>
+        {/* Left Section - Branding & Image */}
+        <div style={{
+          flex: 1,
+          background: 'linear-gradient(135deg, #0b3b68ff 0%, #194377ff 50%, #4b83d7ff 100%)',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: '40px',
+          position: 'relative'
+        }}>
+          <div style={{
+            textAlign: 'center',
+            color: '#1a1a1a',
+            marginBottom: '40px',
+            position: 'relative',
+            zIndex: '1'
+          }}>
+            <div style={{
+              fontSize: '32px',
+              fontWeight: '800',
+              marginBottom: '8px',
+              color: '#ffffff',
+              letterSpacing: '-0.5px'
+            }}>
+              Career
+            </div>
+            <div style={{
+              fontSize: '32px',
+              fontWeight: '800',
+              marginBottom: '40px',
+              color: '#ffffff',
+              letterSpacing: '-0.5px'
+            }}>
+              Companion
+            </div>
+            <div style={{
+              fontSize: '28px',
+              fontWeight: '700',
+              lineHeight: '1.3',
+              marginBottom: '20px',
+              color: '#7bc784ff'
+            }}>
+              Welcome Back
+            </div>
+            <div style={{
+              fontSize: '16px',
+              color: '#bbbec5ff',
+              lineHeight: '1.5',
+              maxWidth: '300px',
+              margin: '0 auto'
+            }}>
+              Prepare for your next interview with personalized tools.
+            </div>
+          </div>
+          
+          {/* Image Container */}
+          <div style={{
+            width: '280px',
+            height: '220px',
+            borderRadius: '16px',
+            overflow: 'hidden',
+            marginTop: '20px',
+            position: 'relative',
+            zIndex: '1',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.08)'
+          }}>
+            <img 
+              src={Loginimg}
+              alt="Career preparation illustration"
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover'
+              }}
+            />
+          </div>
         </div>
 
-        <h2>{isSignUp ? 'Create Account' : 'Welcome Back'}</h2>
+        {/* Right Section - Login Form */}
+        <div style={{
+          flex: 1,
+          padding: '50px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center'
+        }}>
+          <div style={{
+            marginBottom: '32px'
+          }}>
+            <h2 style={{
+              fontSize: '22px',
+              fontWeight: '600',
+              color: '#1a1a1a',
+              marginBottom: '8px'
+            }}>
+              Sign in to your account
+            </h2>
+            <p style={{
+              fontSize: '14px',
+              color: '#6b7280'
+            }}>
+              Enter your credentials to access your account
+            </p>
+          </div>
 
-        <form onSubmit={handleSubmit}>
-          {isSignUp && (
-            <div className="form-group">
-              <label>Full Name</label>
+          <form onSubmit={handleSubmit} style={{ width: '100%' }}>
+            {isSignUp && (
+              <div style={{
+                marginBottom: '20px'
+              }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#374151',
+                  marginBottom: '8px'
+                }}>
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Enter your name"
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '11px 16px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    color: '#1a1a1a',
+                    backgroundColor: 'white',
+                    outline: 'none',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#2563eb';
+                    e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#d1d5db';
+                    e.target.style.boxShadow = 'none';
+                  }}
+                />
+              </div>
+            )}
+
+            <div style={{
+              marginBottom: '20px'
+            }}>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#374151',
+                marginBottom: '8px'
+              }}>
+                Email Address
+              </label>
               <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Enter your name"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
                 required
+                style={{
+                  width: '100%',
+                  padding: '11px 16px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  color: '#1a1a1a',
+                  backgroundColor: 'white',
+                  outline: 'none',
+                  transition: 'all 0.2s ease'
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#2563eb';
+                  e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = '#d1d5db';
+                  e.target.style.boxShadow = 'none';
+                }}
               />
             </div>
-          )}
 
-          <div className="form-group">
-            <label>Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email"
-              required
-            />
-          </div>
+            <div style={{
+              marginBottom: '24px'
+            }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '8px'
+              }}>
+                <label style={{
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#374151'
+                }}>
+                  Password
+                </label>
 
-          <div className="form-group">
-            <label>Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
-              required
-              minLength="6"
-            />
-          </div>
+              </div>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                required
+                minLength="6"
+                style={{
+                  width: '100%',
+                  padding: '11px 16px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  color: '#1a1a1a',
+                  backgroundColor: 'white',
+                  outline: 'none',
+                  transition: 'all 0.2s ease'
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#2563eb';
+                  e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = '#d1d5db';
+                  e.target.style.boxShadow = 'none';
+                }}
+              />
+            </div>
 
-          {error && <div className="error-message">{error}</div>}
+            {error && (
+              <div style={{
+                padding: '12px',
+                backgroundColor: '#fee2e2',
+                border: '1px solid #fca5a5',
+                borderRadius: '8px',
+                color: '#dc2626',
+                fontSize: '14px',
+                marginBottom: '20px'
+              }}>
+                {error}
+              </div>
+            )}
 
-          <button type="submit" className="submit-btn" disabled={loading}>
-            {loading ? 'Processing...' : (isSignUp ? 'Sign Up' : 'Login')}
-          </button>
-        </form>
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                backgroundColor: '#2563eb',
+                border: 'none',
+                borderRadius: '8px',
+                color: 'white',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s ease',
+                marginBottom: '28px',
+                opacity: loading ? 0.7 : 1
+              }}
+              onMouseEnter={(e) => {
+                if (!loading) {
+                  e.target.style.backgroundColor = '#1d4ed8';
+                  e.target.style.transform = 'translateY(-1px)';
+                  e.target.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.2)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!loading) {
+                  e.target.style.backgroundColor = '#2563eb';
+                  e.target.style.transform = 'translateY(0)';
+                  e.target.style.boxShadow = 'none';
+                }
+              }}
+            >
+              {loading ? 'Processing...' : (isSignUp ? 'Sign Up' : 'Sign In')}
+            </button>
 
-        <div className="divider">
-          <span>OR</span>
+            <div style={{
+              textAlign: 'center',
+              fontSize: '14px',
+              color: '#6b7280',
+              borderTop: '1px solid #e5e7eb',
+              paddingTop: '24px'
+            }}>
+              {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
+              <button
+                type="button"
+                onClick={() => setIsSignUp(!isSignUp)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#2563eb',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  padding: '0'
+                }}
+                onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
+                onMouseLeave={(e) => e.target.style.textDecoration = 'none'}
+              >
+                {isSignUp ? 'Sign In' : 'Sign Up'}
+              </button>
+            </div>
+          </form>
         </div>
-
-        <button 
-          onClick={handleGoogleSignIn} 
-          className="google-btn"
-          disabled={loading}
-        >
-          <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
-            <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
-            <path d="M9.003 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.96v2.332C2.44 15.983 5.485 18 9.003 18z" fill="#34A853"/>
-            <path d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
-            <path d="M9.003 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.464.891 11.426 0 9.003 0 5.485 0 2.44 2.017.96 4.958L3.967 7.29c.708-2.127 2.692-3.71 5.036-3.71z" fill="#EA4335"/>
-          </svg>
-          Continue with Google
-        </button>
-
-        <p className="toggle-text">
-          {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
-          <span onClick={() => setIsSignUp(!isSignUp)} className="toggle-link">
-            {isSignUp ? 'Login' : 'Sign Up'}
-          </span>
-        </p>
       </div>
     </div>
   );

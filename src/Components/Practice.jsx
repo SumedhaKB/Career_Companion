@@ -214,7 +214,7 @@ function Practice({ company, round, user, onBack }) {
 
               {showSolution && (
                 <div className="coding-solution">
-                  <h3>💡 Solution:</h3>
+                  <h3>💡 Hint:</h3>
                   <div className="code-block">
                     <pre>{currentQuestion.codeSnippet}</pre>
                   </div>

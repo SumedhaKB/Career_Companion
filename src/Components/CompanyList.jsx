@@ -88,6 +88,7 @@
 // }
 
 // export default CompanyList;
+
 import React, { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
 import { collection, getDocs } from 'firebase/firestore';
